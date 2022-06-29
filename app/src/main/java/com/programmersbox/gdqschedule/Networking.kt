@@ -92,6 +92,15 @@ data class FullGameInfo(
             return s
         }
 
+    val startTimeAsDate: Date?
+        get() {
+            return startTime?.let {
+                val ta = DateTimeFormatter.ISO_INSTANT.parse(it)
+                val i = Instant.from(ta)
+                Date.from(i)
+            }
+        }
+
 }
 
 class GameViewModel : ViewModel() {

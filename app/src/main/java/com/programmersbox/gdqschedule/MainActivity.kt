@@ -7,21 +7,27 @@ import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ListItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
@@ -42,7 +48,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
@@ -57,6 +66,7 @@ import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import com.programmersbox.gdqschedule.ui.theme.GDQScheduleTheme
 import kotlinx.coroutines.launch
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,7 +83,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @OptIn(
-    ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalPagerApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalPagerApi::class,
     ExperimentalMaterialApi::class
 )
 @Composable
@@ -135,10 +146,17 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                         contentPadding = PaddingValues(top = 2.dp)
                     ) {
-                        items(days.values.toList()[page]) {
+                        val list = days.values.toList()[page]
+                        itemsIndexed(list) { i, it ->
+                            val d = Date(currentTime)
+                            val isCurrentGame =
+                                d.after(it.startTimeAsDate) && d.before(list.getOrNull(i + 1)?.startTimeAsDate)
+                            val cardColor =
+                                if (isCurrentGame) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+
                             ElevatedCard(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.elevatedCardColors()
+                                colors = CardDefaults.elevatedCardColors(animateColorAsState(cardColor).value)
                             ) {
                                 ListItem(
                                     text = {
@@ -166,13 +184,34 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                                         )
                                     },
                                     icon = { it.startTimeReadable?.let { it1 -> Text(it1) } },
+                                    trailing = {
+                                        var toggle by remember { mutableStateOf(false) }
+                                        IconToggleButton(
+                                            checked = toggle,
+                                            onCheckedChange = { toggle = it }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.NotificationsActive,
+                                                contentDescription = null,
+                                                tint = animateColorAsState(
+                                                    if (toggle && isCurrentGame) Color(0xFFe74c3c)
+                                                    else LocalContentColor.current
+                                                ).value
+                                            )
+                                        }
+                                    }
                                 )
                             }
                         }
                     }
                 }
             } else {
-                CircularProgressIndicator()
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }
