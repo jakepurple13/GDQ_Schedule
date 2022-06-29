@@ -34,10 +34,12 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SmallTopAppBar
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabPosition
 import androidx.compose.material3.TabRowDefaults
@@ -106,7 +108,16 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
+            SmallTopAppBar(title = { Text("Settings") })
 
+            var toggle by remember { mutableStateOf(false) }
+
+            NavigationDrawerItem(
+                label = { Text("Show Current Game Notification") },
+                selected = false,
+                onClick = { toggle = !toggle },
+                badge = { Switch(checked = toggle, onCheckedChange = null) }
+            )
         },
         gesturesEnabled = drawerState.isOpen
     ) {
