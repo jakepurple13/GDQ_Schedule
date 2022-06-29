@@ -1,5 +1,7 @@
 package com.programmersbox.gdqschedule
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -53,6 +55,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,19 +70,42 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+import androidx.core.app.NotificationCompat
+import androidx.core.content.getSystemService
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import com.programmersbox.gdqschedule.ui.theme.GDQScheduleTheme
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val notificationManager = getSystemService<NotificationManager>()
+        val notificationName = "gdqschedule"
+        val notificationChannel = NotificationChannel(
+            "gdqschedule",
+            notificationName,
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+
+        notificationChannel.description = "gdq schedule"
+        notificationManager?.createNotificationChannel(notificationChannel)
+
         setContent {
             GDQScheduleTheme {
                 // A surface container using the 'background' color from the theme
@@ -102,6 +128,10 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
     val currentTime by currentTime()
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+
+    val workManager = remember { WorkManager.getInstance(context) }
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val topBarState = rememberTopAppBarScrollState()
     val topBarBehavior = remember { TopAppBarDefaults.pinnedScrollBehavior(topBarState) }
@@ -110,13 +140,38 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
         drawerContent = {
             SmallTopAppBar(title = { Text("Settings") })
 
-            var toggle by remember { mutableStateOf(false) }
+            val w by workManager
+                .getWorkInfosForUniqueWorkLiveData("gdqCurrentGame")
+                .observeAsState(emptyList())
+
+            var toggle by remember(w) { mutableStateOf(w.isNotEmpty()) }
 
             NavigationDrawerItem(
                 label = { Text("Show Current Game Notification") },
                 selected = false,
-                onClick = { toggle = !toggle },
+                onClick = {
+                    toggle = !toggle
+                    if (toggle) {
+                        workManager.enqueueUniquePeriodicWork(
+                            "gdqCurrentGame",
+                            ExistingPeriodicWorkPolicy.REPLACE,
+                            PeriodicWorkRequestBuilder<CurrentGameNotifier>(10, TimeUnit.MINUTES).build()
+                        )
+                    } else {
+                        workManager.cancelUniqueWork("gdqCurrentGame")
+                        context.getSystemService<NotificationManager>()?.cancel(13)
+                    }
+                },
                 badge = { Switch(checked = toggle, onCheckedChange = null) }
+            )
+
+            NavigationDrawerItem(
+                label = { Text("Clear all notifications") },
+                selected = false,
+                onClick = {
+                    workManager.cancelAllWork()
+                    workManager.pruneWork()
+                },
             )
         },
         gesturesEnabled = drawerState.isOpen
@@ -180,7 +235,7 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                     ) { page ->
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
-                            contentPadding = PaddingValues(top = 2.dp)
+                            contentPadding = PaddingValues(top = 2.dp, bottom = 2.dp)
                         ) {
                             val list = days.values.toList()[page]
                             itemsIndexed(list) { i, it ->
@@ -222,13 +277,39 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                                         icon = { it.startTimeReadable?.let { it1 -> Text(it1) } },
                                         trailing = if (d.before(it.startTimeAsDate)) {
                                             {
-                                                //TODO: Get work manager working
-                                                // probably will also need to include room
-                                                //TODO: Get current game notification working
-                                                var toggle by remember { mutableStateOf(false) }
+                                                val w by workManager
+                                                    .getWorkInfosForUniqueWorkLiveData("${it.game}${it.info}")
+                                                    .observeAsState(emptyList())
+
+                                                var toggle by remember(w) { mutableStateOf(w.isNotEmpty()) }
+
                                                 IconToggleButton(
                                                     checked = toggle,
-                                                    onCheckedChange = { toggle = it }
+                                                    onCheckedChange = { b ->
+                                                        if (b) {
+                                                            val delay =
+                                                                it.startTimeAsDate?.time?.minus(currentTime) ?: 0L
+
+                                                            workManager.enqueueUniqueWork(
+                                                                "${it.game}${it.info}",
+                                                                ExistingWorkPolicy.REPLACE,
+                                                                OneTimeWorkRequestBuilder<GameNotifier>()
+                                                                    .setInputData(
+                                                                        workDataOf(
+                                                                            "gameInfo" to it.info,
+                                                                            "gameTime" to it.startTimeReadable,
+                                                                            "gameName" to it.game,
+                                                                            "gameId" to "${it.game}${it.info}".hashCode()
+                                                                        )
+                                                                    )
+                                                                    .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                                                                    .build()
+                                                            )
+                                                        } else {
+                                                            workManager.cancelUniqueWork("${it.game}${it.info}")
+                                                        }
+                                                        toggle = b
+                                                    }
                                                 ) {
                                                     Icon(
                                                         Icons.Default.NotificationsActive,
@@ -381,5 +462,79 @@ fun currentTime(): State<Long> {
 fun DefaultPreview() {
     GDQScheduleTheme {
         GDQSchedule()
+    }
+}
+
+class GameNotifier(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+    override suspend fun doWork(): Result {
+        val name = inputData.getString("gameName")
+        val time = inputData.getString("gameTime")
+        val info = inputData.getString("gameInfo")
+        val id = inputData.getInt("gameId", 0)
+
+        val n = NotificationCompat.Builder(applicationContext, "gdqschedule")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(name)
+            .setContentText(time)
+            .setContentInfo(info)
+            .build()
+
+        applicationContext.getSystemService<NotificationManager>()?.notify(id, n)
+
+        return Result.success()
+    }
+}
+
+class CurrentGameNotifier(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+    override suspend fun doWork(): Result {
+        val currentTime = System.currentTimeMillis()
+        val d = Date(currentTime)
+
+        val data = Networking.getInfo().firstOrNull().orEmpty()
+
+        var gameInfo: FullGameInfo? = null
+        var index = 0
+
+        for (i in data.withIndex()) {
+            val it = i.value
+            if (d.after(it.startTimeAsDate) && d.before(data.getOrNull(i.index + 1)?.startTimeAsDate)) {
+                gameInfo = it
+                index = i.index
+                break
+            }
+        }
+
+        val name = gameInfo?.game
+        val time = gameInfo?.startTimeReadable
+        val info = gameInfo?.info
+
+        val next = data.getOrNull(index + 1)
+        val second = data.getOrNull(index + 2)
+        val third = data.getOrNull(index + 3)
+
+        val n = NotificationCompat.Builder(applicationContext, "gdqschedule")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(name)
+            .setContentText(time)
+            .setContentInfo(info)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .setBigContentTitle("$time - $name")
+                    .setSummaryText("$time - $name")
+                    .bigText(
+                        listOf(
+                            "${next?.startTimeReadable} - ${next?.game}",
+                            "${second?.startTimeReadable} - ${second?.game}",
+                            "${third?.startTimeReadable} - ${third?.game}"
+                        )
+                            .joinToString("\n")
+                    )
+            )
+            .setOngoing(true)
+            .build()
+
+        applicationContext.getSystemService<NotificationManager>()?.notify(13, n)
+
+        return Result.success()
     }
 }

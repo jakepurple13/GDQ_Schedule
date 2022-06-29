@@ -72,4 +72,9 @@ dependencies {
     // If using indicators, also depend on
     implementation "com.google.accompanist:accompanist-pager-indicators:$accompanist"
 
+    def work_version = "2.7.1"
+    implementation "androidx.work:work-runtime-ktx:$work_version"
+
+    implementation "androidx.compose.runtime:runtime-livedata:$compose_version"
+
 }
