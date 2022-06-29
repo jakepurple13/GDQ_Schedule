@@ -20,15 +20,20 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ListItem
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MenuOpen
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SmallTopAppBar
@@ -38,6 +43,7 @@ import androidx.compose.material3.TabPosition
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTopAppBarScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -66,6 +72,7 @@ import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import com.programmersbox.gdqschedule.ui.theme.GDQScheduleTheme
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.*
 
 class MainActivity : ComponentActivity() {
@@ -91,126 +98,148 @@ class MainActivity : ComponentActivity() {
 fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
 
     val currentTime by currentTime()
+    val scope = rememberCoroutineScope()
 
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val topBarState = rememberTopAppBarScrollState()
     val topBarBehavior = remember { TopAppBarDefaults.pinnedScrollBehavior(topBarState) }
-    Scaffold(
-        modifier = Modifier.nestedScroll(topBarBehavior.nestedScrollConnection),
-        topBar = {
-            SmallTopAppBar(
-                title = { Text("GDQ Schedule") },
-                scrollBehavior = topBarBehavior
-            )
-        }
-    ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            val pagerState = rememberPagerState()
-            val scope = rememberCoroutineScope()
-            val days = viewModel.gameInfoGrouped
-            if (days.isNotEmpty()) {
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
 
-                LaunchedEffect(Unit) {
-                    val c = days.keys.indexOf(viewModel.dateFormat.format(currentTime))
-                    if (c != -1) pagerState.animateScrollToPage(c)
-                }
-
-                ScrollableTabRow(
-                    containerColor = TopAppBarDefaults.smallTopAppBarColors()
-                        .containerColor(scrollFraction = topBarBehavior.scrollFraction).value,
-                    selectedTabIndex = pagerState.currentPage,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.Indicator(
-                            Modifier.pagerTabIndicatorOffset(pagerState, tabPositions)
-                        )
+        },
+        gesturesEnabled = drawerState.isOpen
+    ) {
+        Scaffold(
+            modifier = Modifier.nestedScroll(topBarBehavior.nestedScrollConnection),
+            topBar = {
+                SmallTopAppBar(
+                    title = { Text("GDQ Schedule") },
+                    scrollBehavior = topBarBehavior
+                )
+            },
+            bottomBar = {
+                BottomAppBar(
+                    icons = { Text(SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(currentTime)) },
+                    floatingActionButton = {
+                        FloatingActionButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(imageVector = Icons.Default.MenuOpen, contentDescription = null)
+                        }
                     }
-                ) {
-                    days.keys.forEachIndexed { index, title ->
-                        Tab(
-                            text = { Text(title) },
-                            selected = pagerState.currentPage == index,
-                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } }
-                        )
-                    }
-                }
+                )
+            }
+        ) { padding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                val pagerState = rememberPagerState()
+                val days = viewModel.gameInfoGrouped
+                if (days.isNotEmpty()) {
 
-                HorizontalPager(
-                    count = days.keys.size,
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize()
-                ) { page ->
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        contentPadding = PaddingValues(top = 2.dp)
+                    LaunchedEffect(Unit) {
+                        val c = days.keys.indexOf(viewModel.dateFormat.format(currentTime))
+                        if (c != -1) pagerState.animateScrollToPage(c)
+                    }
+
+                    ScrollableTabRow(
+                        containerColor = TopAppBarDefaults.smallTopAppBarColors()
+                            .containerColor(scrollFraction = topBarBehavior.scrollFraction).value,
+                        selectedTabIndex = pagerState.currentPage,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.Indicator(
+                                Modifier.pagerTabIndicatorOffset(pagerState, tabPositions)
+                            )
+                        }
                     ) {
-                        val list = days.values.toList()[page]
-                        itemsIndexed(list) { i, it ->
-                            val d = Date(currentTime)
-                            val isCurrentGame =
-                                d.after(it.startTimeAsDate) && d.before(list.getOrNull(i + 1)?.startTimeAsDate)
-                            val cardColor =
-                                if (isCurrentGame) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                        days.keys.forEachIndexed { index, title ->
+                            Tab(
+                                text = { Text(title) },
+                                selected = pagerState.currentPage == index,
+                                onClick = { scope.launch { pagerState.animateScrollToPage(index) } }
+                            )
+                        }
+                    }
 
-                            ElevatedCard(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.elevatedCardColors(animateColorAsState(cardColor).value)
-                            ) {
-                                ListItem(
-                                    text = {
-                                        Text(
-                                            it.game!!,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                    },
-                                    secondaryText = {
-                                        Column {
+                    HorizontalPager(
+                        count = days.keys.size,
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            contentPadding = PaddingValues(top = 2.dp)
+                        ) {
+                            val list = days.values.toList()[page]
+                            itemsIndexed(list) { i, it ->
+                                val d = Date(currentTime)
+                                val isCurrentGame =
+                                    d.after(it.startTimeAsDate) && d.before(list.getOrNull(i + 1)?.startTimeAsDate)
+                                val cardColor =
+                                    if (isCurrentGame) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+
+                                ElevatedCard(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.elevatedCardColors(animateColorAsState(cardColor).value)
+                                ) {
+                                    ListItem(
+                                        text = {
                                             Text(
-                                                it.info!!,
-                                                style = MaterialTheme.typography.bodyMedium
+                                                it.game!!,
+                                                style = MaterialTheme.typography.titleMedium
                                             )
+                                        },
+                                        secondaryText = {
+                                            Column {
+                                                Text(
+                                                    it.info!!,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                                Text(
+                                                    it.runner!!,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            }
+                                        },
+                                        overlineText = {
                                             Text(
-                                                it.runner!!,
-                                                style = MaterialTheme.typography.bodyMedium
+                                                it.time!!,
+                                                style = MaterialTheme.typography.labelSmall
                                             )
+                                        },
+                                        icon = { it.startTimeReadable?.let { it1 -> Text(it1) } },
+                                        trailing = {
+                                            //TODO: Get work manager working
+                                            // probably will also need to include room
+                                            //TODO: Get current game notification working
+                                            var toggle by remember { mutableStateOf(false) }
+                                            IconToggleButton(
+                                                checked = toggle,
+                                                onCheckedChange = { toggle = it }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.NotificationsActive,
+                                                    contentDescription = null,
+                                                    tint = animateColorAsState(
+                                                        if (toggle && isCurrentGame) Color(0xFFe74c3c)
+                                                        else LocalContentColor.current
+                                                    ).value
+                                                )
+                                            }
                                         }
-                                    },
-                                    overlineText = {
-                                        Text(
-                                            it.time!!,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    },
-                                    icon = { it.startTimeReadable?.let { it1 -> Text(it1) } },
-                                    trailing = {
-                                        var toggle by remember { mutableStateOf(false) }
-                                        IconToggleButton(
-                                            checked = toggle,
-                                            onCheckedChange = { toggle = it }
-                                        ) {
-                                            Icon(
-                                                Icons.Default.NotificationsActive,
-                                                contentDescription = null,
-                                                tint = animateColorAsState(
-                                                    if (toggle && isCurrentGame) Color(0xFFe74c3c)
-                                                    else LocalContentColor.current
-                                                ).value
-                                            )
-                                        }
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
         }
