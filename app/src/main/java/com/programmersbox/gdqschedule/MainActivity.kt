@@ -11,7 +11,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,18 +18,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ListItem
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SmallTopAppBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabPosition
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -110,6 +108,8 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                 }
 
                 ScrollableTabRow(
+                    containerColor = TopAppBarDefaults.smallTopAppBarColors()
+                        .containerColor(scrollFraction = topBarBehavior.scrollFraction).value,
                     selectedTabIndex = pagerState.currentPage,
                     indicator = { tabPositions ->
                         TabRowDefaults.Indicator(
@@ -137,7 +137,8 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                     ) {
                         items(days.values.toList()[page]) {
                             ElevatedCard(
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.elevatedCardColors()
                             ) {
                                 ListItem(
                                     text = {
@@ -147,18 +148,24 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                                         )
                                     },
                                     secondaryText = {
-                                        Text(
-                                            it.runner!!,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
+                                        Column {
+                                            Text(
+                                                it.info!!,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            Text(
+                                                it.runner!!,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
                                     },
                                     overlineText = {
                                         Text(
-                                            it.info!!,
+                                            it.time!!,
                                             style = MaterialTheme.typography.labelSmall
                                         )
                                     },
-                                    icon = { it.startTimeReadable?.let { it1 -> Text(it1) } }
+                                    icon = { it.startTimeReadable?.let { it1 -> Text(it1) } },
                                 )
                             }
                         }

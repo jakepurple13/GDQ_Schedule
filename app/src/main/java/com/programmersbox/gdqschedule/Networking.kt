@@ -1,9 +1,5 @@
 package com.programmersbox.gdqschedule
 
-import android.annotation.SuppressLint
-import android.content.Context
-import android.os.Build
-import android.text.format.DateFormat.getDateFormat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -15,7 +11,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
-import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -92,13 +87,7 @@ data class FullGameInfo(
                 val i = Instant.from(ta)
                 Date.from(i)
             }
-                ?.let {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        android.icu.text.DateFormat.getTimeInstance().format(it)
-                    } else {
-                        DateFormat.getTimeInstance().format(it)
-                    }
-                }
+                ?.let { SimpleDateFormat("h:mm a", Locale.getDefault()).format(it) }
 
             return s
         }
