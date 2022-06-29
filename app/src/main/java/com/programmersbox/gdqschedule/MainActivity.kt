@@ -220,25 +220,27 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                                             )
                                         },
                                         icon = { it.startTimeReadable?.let { it1 -> Text(it1) } },
-                                        trailing = {
-                                            //TODO: Get work manager working
-                                            // probably will also need to include room
-                                            //TODO: Get current game notification working
-                                            var toggle by remember { mutableStateOf(false) }
-                                            IconToggleButton(
-                                                checked = toggle,
-                                                onCheckedChange = { toggle = it }
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.NotificationsActive,
-                                                    contentDescription = null,
-                                                    tint = animateColorAsState(
-                                                        if (toggle && isCurrentGame) Color(0xFFe74c3c)
-                                                        else LocalContentColor.current
-                                                    ).value
-                                                )
+                                        trailing = if (d.before(it.startTimeAsDate)) {
+                                            {
+                                                //TODO: Get work manager working
+                                                // probably will also need to include room
+                                                //TODO: Get current game notification working
+                                                var toggle by remember { mutableStateOf(false) }
+                                                IconToggleButton(
+                                                    checked = toggle,
+                                                    onCheckedChange = { toggle = it }
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.NotificationsActive,
+                                                        contentDescription = null,
+                                                        tint = animateColorAsState(
+                                                            if (toggle && isCurrentGame) Color(0xFFe74c3c)
+                                                            else LocalContentColor.current
+                                                        ).value
+                                                    )
+                                                }
                                             }
-                                        }
+                                        } else null
                                     )
                                 }
                             }
