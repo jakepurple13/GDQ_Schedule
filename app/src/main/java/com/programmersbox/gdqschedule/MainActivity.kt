@@ -10,6 +10,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,19 +21,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.ListItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MenuOpen
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
@@ -245,85 +245,72 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                                 val cardColor =
                                     if (isCurrentGame) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
 
-                                ElevatedCard(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.elevatedCardColors(animateColorAsState(cardColor).value)
-                                ) {
-                                    ListItem(
-                                        text = {
-                                            Text(
-                                                it.game!!,
-                                                style = MaterialTheme.typography.titleMedium
-                                            )
-                                        },
-                                        secondaryText = {
-                                            Column {
-                                                Text(
-                                                    it.info!!,
-                                                    style = MaterialTheme.typography.bodyMedium
-                                                )
-                                                Text(
-                                                    it.runner!!,
-                                                    style = MaterialTheme.typography.bodyMedium
-                                                )
-                                            }
-                                        },
-                                        overlineText = {
-                                            Text(
-                                                it.time!!,
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
-                                        },
-                                        icon = { it.startTimeReadable?.let { it1 -> Text(it1) } },
-                                        trailing = if (d.before(it.startTimeAsDate)) {
-                                            {
-                                                val w by workManager
-                                                    .getWorkInfosForUniqueWorkLiveData("${it.game}${it.info}")
-                                                    .observeAsState(emptyList())
+                                ListItem(
+                                    modifier = Modifier
+                                        .border(
+                                            4.dp,
+                                            animateColorAsState(cardColor).value,
+                                            MaterialTheme.shapes.small
+                                        )
+                                        .fillMaxWidth(),
+                                    headlineText = { Text(it.game!!) },
+                                    supportingText = {
+                                        Column {
+                                            Text(it.info!!)
+                                            Text(it.runner!!)
+                                        }
+                                    },
+                                    overlineText = { Text(it.time!!) },
+                                    leadingContent = { it.startTimeReadable?.let { it1 -> Text(it1) } },
+                                    trailingContent = if (d.before(it.startTimeAsDate)) {
+                                        {
+                                            val w by workManager
+                                                .getWorkInfosForUniqueWorkLiveData("${it.game}${it.info}")
+                                                .observeAsState(emptyList())
 
-                                                var toggle by remember(w) { mutableStateOf(w.isNotEmpty()) }
+                                            var toggle by remember(w) { mutableStateOf(w.isNotEmpty()) }
 
-                                                IconToggleButton(
-                                                    checked = toggle,
-                                                    onCheckedChange = { b ->
-                                                        if (b) {
-                                                            val delay =
-                                                                it.startTimeAsDate?.time?.minus(currentTime) ?: 0L
+                                            IconToggleButton(
+                                                checked = toggle,
+                                                onCheckedChange = { b ->
+                                                    if (b) {
+                                                        val delay =
+                                                            it.startTimeAsDate?.time?.minus(currentTime) ?: 0L
 
-                                                            workManager.enqueueUniqueWork(
-                                                                "${it.game}${it.info}",
-                                                                ExistingWorkPolicy.REPLACE,
-                                                                OneTimeWorkRequestBuilder<GameNotifier>()
-                                                                    .setInputData(
-                                                                        workDataOf(
-                                                                            "gameInfo" to it.info,
-                                                                            "gameTime" to it.startTimeReadable,
-                                                                            "gameName" to it.game,
-                                                                            "gameId" to "${it.game}${it.info}".hashCode()
-                                                                        )
+                                                        workManager.enqueueUniqueWork(
+                                                            "${it.game}${it.info}",
+                                                            ExistingWorkPolicy.REPLACE,
+                                                            OneTimeWorkRequestBuilder<GameNotifier>()
+                                                                .setInputData(
+                                                                    workDataOf(
+                                                                        "gameInfo" to it.info,
+                                                                        "gameTime" to it.startTimeReadable,
+                                                                        "gameName" to it.game,
+                                                                        "gameId" to "${it.game}${it.info}".hashCode()
                                                                     )
-                                                                    .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-                                                                    .build()
-                                                            )
-                                                        } else {
-                                                            workManager.cancelUniqueWork("${it.game}${it.info}")
-                                                        }
-                                                        toggle = b
+                                                                )
+                                                                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                                                                .build()
+                                                        )
+                                                    } else {
+                                                        workManager.cancelUniqueWork("${it.game}${it.info}")
                                                     }
-                                                ) {
-                                                    Icon(
-                                                        Icons.Default.NotificationsActive,
-                                                        contentDescription = null,
-                                                        tint = animateColorAsState(
-                                                            if (toggle && isCurrentGame) Color(0xFFe74c3c)
-                                                            else LocalContentColor.current
-                                                        ).value
-                                                    )
+                                                    toggle = b
                                                 }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.NotificationsActive,
+                                                    contentDescription = null,
+                                                    tint = animateColorAsState(
+                                                        if (toggle && isCurrentGame) Color(0xFFe74c3c)
+                                                        else LocalContentColor.current
+                                                    ).value
+                                                )
                                             }
-                                        } else null
-                                    )
-                                }
+                                        }
+                                    } else null
+                                )
+                                Divider(modifier = Modifier.padding(top = 2.dp))
                             }
                         }
                     }
