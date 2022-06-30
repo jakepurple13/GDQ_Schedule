@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.MenuOpen
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.BottomAppBar
@@ -31,6 +33,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
@@ -91,6 +94,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -181,7 +185,16 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
             topBar = {
                 SmallTopAppBar(
                     title = { Text("GDQ Schedule") },
-                    scrollBehavior = topBarBehavior
+                    scrollBehavior = topBarBehavior,
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://gamesdonequick.com/donate"))
+                                )
+                            }
+                        ) { Icon(Icons.Default.AttachMoney, null) }
+                    }
                 )
             },
             bottomBar = {
