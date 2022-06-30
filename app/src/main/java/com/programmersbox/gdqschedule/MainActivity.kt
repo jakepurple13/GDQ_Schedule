@@ -69,6 +69,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -194,6 +195,13 @@ fun GDQSchedule(viewModel: GameViewModel = viewModel()) {
                                 )
                             }
                         ) { Icon(Icons.Default.AttachMoney, null) }
+                        IconButton(
+                            onClick = {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://www.twitch.tv/gamesdonequick"))
+                                )
+                            }
+                        ) { Icon(painterResource(id = R.drawable.twitchtv), null) }
                     }
                 )
             },
